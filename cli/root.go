@@ -54,6 +54,8 @@ var renameCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Rename command called")
+		// isWindows or not
+		osIsWindows := helper.IsWindows()
 
 		if args[0] != "" {
 			// if args[0] is a folder, print the files in the folder
@@ -64,14 +66,14 @@ var renameCmd = &cobra.Command{
 				return
 			}
 			fmt.Println("______________________")
-			fmt.Println(" ")
+			fmt.Println("Files in the folder: ", args[0])
 			for _, file := range files {
 				fmt.Println(file.FullPath)
 							
 			}
 			
 			fmt.Println("______________________")
-			fmt.Println(" ")
+			fmt.Println("Renaming files...")
 			if outputFolder("") != "" {
 				fmt.Println("Output folder provided")
 				// check the output folder exists, if not create the folder
@@ -111,7 +113,11 @@ var renameCmd = &cobra.Command{
 				} else {
 					// replace the file name with the new name
 					if newname != file.File {
+						if !osIsWindows {
 						exec.Command("mv", file.FullPath, newpath).Run()
+						} else {
+						exec.Command("move", file.FullPath, newpath).Run()
+						}
 						// helper.MoveFile(file, newfile)
 						fmt.Println(newpath)
 					}

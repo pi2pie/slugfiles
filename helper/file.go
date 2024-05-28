@@ -11,13 +11,13 @@ import (
 )
 
 // check isWindows or isUnix
-func isWindows() bool {
+func IsWindows() bool {
 	return os.PathSeparator == '\\'
 }
 
 // GetSeparator : Get the separator for the OS
 func GetSeparator() string {
-	if isWindows() {
+	if IsWindows() {
 		fmt.Println("OS: Windows")
 		return "\\"
 	}
