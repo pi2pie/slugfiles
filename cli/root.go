@@ -67,13 +67,15 @@ var renameCmd = &cobra.Command{
 			}
 			fmt.Println("______________________")
 			fmt.Println("Files in the folder: ", args[0])
+			fmt.Println(" ")
 			for _, file := range files {
-				fmt.Println(file.FullPath)
+				fmt.Println(file.File)
 							
 			}
 			
 			fmt.Println("______________________")
 			fmt.Println("Renaming files...")
+			fmt.Println(" ")
 			if outputFolder("") != "" {
 				fmt.Println("Output folder provided")
 				// check the output folder exists, if not create the folder
@@ -90,7 +92,7 @@ var renameCmd = &cobra.Command{
 					FullPath: newpath,
 					Folder: file.Folder,
 					File: newname,
-					FileName: file.FileName,
+					FileName: strings.TrimSuffix(newname, file.Ext),
 					Ext: file.Ext,
 				}				
 				// if output folder is provided, move the file to the output folder
@@ -101,14 +103,14 @@ var renameCmd = &cobra.Command{
 						FullPath: newpath,
 						Folder: outputFolder(file.Folder),
 						File: newname,
-						FileName: file.FileName,
+						FileName: strings.TrimSuffix(newname, file.Ext),
 						Ext: file.Ext,
 					}
 					// replace the file name with the new name
 				if newname != file.File {
 					// exec.Command("cp", file.FullPath, newpath).Run()
 					helper.CopyFile(file, newfile)
-					fmt.Println(newpath)
+					fmt.Println(newfile.File)
 					}					
 				} else {
 					// replace the file name with the new name
@@ -119,7 +121,7 @@ var renameCmd = &cobra.Command{
 						exec.Command("move", file.FullPath, newpath).Run()
 						}
 						// helper.MoveFile(file, newfile)
-						fmt.Println(newpath)
+						fmt.Println(newfile.File)
 					}
 				}				
 			}
