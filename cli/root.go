@@ -16,7 +16,7 @@ var isRecursive bool
 
 // RootCmd is the root command for the CLI
 var RootCmd = &cobra.Command{
-	Use:   "sgrename",
+	Use:   "slugfiles",
 	Short: "Rename files in a directory to user friendly slugs.",
 	Version: "0.0.1",	
 }
