@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"strings"
 
 	"github.com/gosimple/slug"
@@ -18,7 +19,7 @@ var isRecursive bool
 var RootCmd = &cobra.Command{
 	Use:   "slugfiles",
 	Short: "Rename files in a directory to user friendly slugs.",
-	Version: "0.0.1",	
+	Version: "0.0.2",	
 }
 
 func init() {
@@ -82,14 +83,14 @@ var renameCmd = &cobra.Command{
 			}
 			for _, file := range files {
 				newname := slug.Make(file.FileName) + file.Ext
-				newpath := file.Folder + newname
+				newpath := file.Folder + newname				
 				newfile := model.File {
 					FullPath: newpath,
 					Folder: file.Folder,
 					File: newname,
 					FileName: file.FileName,
 					Ext: file.Ext,
-				}
+				}				
 				// if output folder is provided, move the file to the output folder
 				if outputFolder("") != "" {
 					// fmt.Println(outputFolder(file.Folder))					
@@ -110,8 +111,8 @@ var renameCmd = &cobra.Command{
 				} else {
 					// replace the file name with the new name
 					if newname != file.File {
-						// exec.Command("mv", file.FullPath, newpath).Run()
-						helper.MoveFile(file, newfile)
+						exec.Command("mv", file.FullPath, newpath).Run()
+						// helper.MoveFile(file, newfile)
 						fmt.Println(newpath)
 					}
 				}				
