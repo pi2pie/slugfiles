@@ -8,8 +8,8 @@ import (
 	"github.com/gosimple/slug"
 	"github.com/spf13/cobra"
 
-	"pi2pie/slugfiles-rename/helper"
-	"pi2pie/slugfiles-rename/model"
+	"github.com/pi2pie/slugfiles/helper"
+	"github.com/pi2pie/slugfiles/model"
 )
 
 var isRecursive bool

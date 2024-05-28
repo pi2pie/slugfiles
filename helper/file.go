@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"pi2pie/slugfiles-rename/model"
+	"github.com/pi2pie/slugfiles/model"
 )
 
 // check isWindows or isUnix

@@ -3,7 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
-	"pi2pie/slugfiles-rename/cli"
+
+	"github.com/pi2pie/slugfiles/cli"
 )
 
 func main() {
