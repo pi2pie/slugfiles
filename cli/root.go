@@ -24,7 +24,7 @@ var RootCmd = &cobra.Command{
 
 func init() {
 	RootCmd.CompletionOptions.DisableDefaultCmd = true
-	RootCmd.PersistentFlags().BoolVarP(&isRecursive, "recursive", "r", false, "Recursively rename files in subdirectories")
+	// RootCmd.PersistentFlags().BoolVarP(&isRecursive, "recursive", "r", false, "Recursively rename files in subdirectories")
 	RootCmd.PersistentFlags().StringP("output", "o", "", "Output directory")
 	RootCmd.AddCommand(renameCmd)
 }
