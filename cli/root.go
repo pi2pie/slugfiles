@@ -16,9 +16,9 @@ var isRecursive bool
 
 // RootCmd is the root command for the CLI
 var RootCmd = &cobra.Command{
-	Use:   "slugfiles",
-	Short: "Rename files in a directory to user friendly slugs.",
-	Version: "0.0.3",	
+	Use:     "slugfiles",
+	Short:   "Rename files in a directory to user friendly slugs.",
+	Version: "0.0.3",
 }
 
 func init() {
@@ -38,10 +38,10 @@ func outputFolder(path string) string {
 	} else if len(pathArray) == 1 {
 		return output
 	} else {
-	pathArray = pathArray[:len(pathArray)-2]
-	// join the array back to a string
-	output = strings.Join(pathArray, "/") + "/" + output
-	return output
+		pathArray = pathArray[:len(pathArray)-2]
+		// join the array back to a string
+		output = strings.Join(pathArray, "/") + "/" + output
+		return output
 	}
 }
 
@@ -55,7 +55,7 @@ var renameCmd = &cobra.Command{
 		if args[0] != "" {
 			// if args[0] is a folder, print the files in the folder
 			// read the folder and loop through the files and print the file names
-			files, err := helper.GetFiles(args[0], isRecursive)			
+			files, err := helper.GetFiles(args[0], isRecursive)
 			if err != nil {
 				fmt.Println("Error:", err)
 				return
@@ -65,9 +65,9 @@ var renameCmd = &cobra.Command{
 			fmt.Println(" ")
 			for _, file := range files {
 				fmt.Println(file.File)
-							
+
 			}
-			
+
 			fmt.Println("______________________")
 			fmt.Println("Renaming files...")
 			fmt.Println(" ")
@@ -82,38 +82,38 @@ var renameCmd = &cobra.Command{
 			}
 			for _, file := range files {
 				newname := slug.Make(file.FileName) + file.Ext
-				newpath := file.Folder + newname				
-				newfile := model.File {
+				newpath := file.Folder + newname
+				newfile := model.File{
 					FullPath: newpath,
-					Folder: file.Folder,
-					File: newname,
+					Folder:   file.Folder,
+					File:     newname,
 					FileName: strings.TrimSuffix(newname, file.Ext),
-					Ext: file.Ext,
-				}				
+					Ext:      file.Ext,
+				}
 				// if output folder is provided, move the file to the output folder
 				if outputFolder("") != "" {
-					// fmt.Println(outputFolder(file.Folder))					
+					// fmt.Println(outputFolder(file.Folder))
 					newpath = outputFolder(file.Folder) + "/" + newname
-					newfile = model.File {
+					newfile = model.File{
 						FullPath: newpath,
-						Folder: outputFolder(file.Folder),
-						File: newname,
+						Folder:   outputFolder(file.Folder),
+						File:     newname,
 						FileName: strings.TrimSuffix(newname, file.Ext),
-						Ext: file.Ext,
+						Ext:      file.Ext,
 					}
 					// replace the file name with the new name
-				if newname != file.File {
-					// exec.Command("cp", file.FullPath, newpath).Run()
-					helper.CopyFile(file, newfile)
-					fmt.Println(newfile.File)
-					}					
+					if newname != file.File {
+						// exec.Command("cp", file.FullPath, newpath).Run()
+						helper.CopyFile(file, newfile)
+						fmt.Println(newfile.File)
+					}
 				} else {
 					// replace the file name with the new name
 					if newname != file.File {
 						helper.MoveFile(file, newfile)
 						fmt.Println(newfile.File)
 					}
-				}				
+				}
 			}
 		}
 	},

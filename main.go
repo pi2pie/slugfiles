@@ -1,3 +1,7 @@
+/*
+Copyright © 2024 pi2pie,Ltd.
+Licensed under the MIT License.
+*/
 package main
 
 import (
