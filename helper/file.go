@@ -131,10 +131,6 @@ func MoveFile(src, dest model.File) error {
 		return err
 	}
 	
-	// for sure close the file
-	defer source.Close()
-	defer destination.Close()
-
 	if err = os.Remove(src.FullPath); err != nil {
 		return err
 	}
