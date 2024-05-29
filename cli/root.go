@@ -3,7 +3,6 @@ package cli
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"strings"
 
 	"github.com/gosimple/slug"
@@ -19,12 +18,11 @@ var isRecursive bool
 var RootCmd = &cobra.Command{
 	Use:   "slugfiles",
 	Short: "Rename files in a directory to user friendly slugs.",
-	Version: "0.0.2",	
+	Version: "0.0.3",	
 }
 
 func init() {
 	RootCmd.CompletionOptions.DisableDefaultCmd = true
-	// RootCmd.PersistentFlags().BoolVarP(&isRecursive, "recursive", "r", false, "Recursively rename files in subdirectories")
 	RootCmd.PersistentFlags().StringP("output", "o", "", "Output directory")
 	RootCmd.AddCommand(renameCmd)
 }
@@ -41,7 +39,6 @@ func outputFolder(path string) string {
 		return output
 	} else {
 	pathArray = pathArray[:len(pathArray)-2]
-	// fmt.Println("afeter: ", pathArray)
 	// join the array back to a string
 	output = strings.Join(pathArray, "/") + "/" + output
 	return output
@@ -54,8 +51,6 @@ var renameCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Rename command called")
-		// isWindows or not
-		osIsWindows := helper.IsWindows()
 
 		if args[0] != "" {
 			// if args[0] is a folder, print the files in the folder
@@ -115,12 +110,7 @@ var renameCmd = &cobra.Command{
 				} else {
 					// replace the file name with the new name
 					if newname != file.File {
-						if !osIsWindows {
-						exec.Command("mv", file.FullPath, newpath).Run()
-						} else {
-						exec.Command("move", file.FullPath, newpath).Run()
-						}
-						// helper.MoveFile(file, newfile)
+						helper.MoveFile(file, newfile)
 						fmt.Println(newfile.File)
 					}
 				}				

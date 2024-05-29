@@ -78,8 +78,6 @@ func GetFiles(folder string, isRecursive bool) ([]model.File, error) {
 						return files, err
 					}
 					files = append(files, model.ConstructFile(folder+pathSeparator+file.Name()))
-				} else {
-					// fmt.Println("directory: ", file.Name())
 				}
 			}
 		} else {
@@ -109,6 +107,11 @@ func GetSubfolder(file model.File, sourceFolder string) string {
 
 // move file
 func MoveFile(src, dest model.File) error {
+	source, err := os.Open(src.FullPath)
+	if err != nil {
+		return err
+	}
+	defer source.Close()
 	// Create the target folder at destination if not exists (for subfolder only)
 	// Root target folder must exists, else error will be thrown. Validation is performed earlier on
 	if _, err := os.Stat(dest.Folder); os.IsNotExist(err) {
@@ -116,8 +119,21 @@ func MoveFile(src, dest model.File) error {
 			return err
 		}
 	}
-
-	return os.Rename(src.FullPath, dest.FullPath)
+	destination, err := os.Create(dest.FullPath)
+	if err != nil {
+		return err
+	}
+	defer destination.Close()
+	
+	// copy the file to the destination
+	// and delete the original file
+	if _, err = io.Copy(destination, source); err != nil {
+		return err
+	}
+	if err = os.Remove(src.FullPath); err != nil {
+		return err
+	}
+	return nil
 }
 
 // copy file
