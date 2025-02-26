@@ -3,6 +3,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/gosimple/slug"
@@ -14,35 +15,58 @@ import (
 
 var isRecursive bool
 
+// Version can be set via ldflags during build
+var Version = "0.0.4-alpha"
+
 // RootCmd is the root command for the CLI
 var RootCmd = &cobra.Command{
 	Use:     "slugfiles",
 	Short:   "Rename files in a directory to user friendly slugs.",
-	Version: "0.0.3",
+	Version: Version,
 }
 
 func init() {
 	RootCmd.CompletionOptions.DisableDefaultCmd = true
 	RootCmd.PersistentFlags().StringP("output", "o", "", "Output directory")
+	RootCmd.PersistentFlags().BoolVarP(&isRecursive, "recursive", "r", false, "Process directories recursively")
 	RootCmd.AddCommand(renameCmd)
 }
 
-func outputFolder(path string) string {
+// Rewritten outputFolder function to properly handle directory structures
+func outputFolder() string {
 	output, _ := RootCmd.PersistentFlags().GetString("output")
-	// seperate path to the array seperated by /
-	pathArray := strings.Split(path, "/")
-	// remove the last element
-	// if pathArray is empty skip the operation
-	if len(pathArray) == 0 {
-		return output
-	} else if len(pathArray) == 1 {
-		return output
-	} else {
-		pathArray = pathArray[:len(pathArray)-2]
-		// join the array back to a string
-		output = strings.Join(pathArray, "/") + "/" + output
-		return output
+	if output == "" {
+		return ""
 	}
+	
+	// Normalize and ensure output has trailing separator
+	output = filepath.Clean(output)
+	if !strings.HasSuffix(output, string(os.PathSeparator)) {
+		output += string(os.PathSeparator)
+	}
+	
+	return output
+}
+
+// getTargetPath calculates the target path for a file in recursive mode
+func getTargetPath(sourceBase, filePath, outputDir string) string {
+	// Normalize paths
+	sourceBase = filepath.Clean(sourceBase)
+	filePath = filepath.Clean(filePath)
+	
+	// Get the relative path from source base directory
+	relPath, err := filepath.Rel(sourceBase, filepath.Dir(filePath))
+	if err != nil {
+		// Fallback if we can't get relative path
+		return outputDir
+	}
+	
+	if relPath == "." {
+		return outputDir
+	}
+	
+	// Combine output directory with relative path
+	return filepath.Join(outputDir, relPath) + string(os.PathSeparator)
 }
 
 var renameCmd = &cobra.Command{
@@ -53,66 +77,86 @@ var renameCmd = &cobra.Command{
 		fmt.Println("Rename command called")
 
 		if args[0] != "" {
-			// if args[0] is a folder, print the files in the folder
-			// read the folder and loop through the files and print the file names
-			files, err := helper.GetFiles(args[0], isRecursive)
+				// Clean and normalize the source directory path
+			sourceDir := filepath.Clean(args[0])
+			
+			// Get files according to recursive flag
+			files, err := helper.GetFiles(sourceDir, isRecursive)
 			if err != nil {
 				fmt.Println("Error:", err)
 				return
 			}
 			fmt.Println("______________________")
-			fmt.Println("Files in the folder: ", args[0])
+			fmt.Println("Files in the folder: ", sourceDir)
 			fmt.Println(" ")
 			for _, file := range files {
 				fmt.Println(file.File)
-
 			}
 
 			fmt.Println("______________________")
 			fmt.Println("Renaming files...")
 			fmt.Println(" ")
-			if outputFolder("") != "" {
-				fmt.Println("Output folder provided")
-				// check the output folder exists, if not create the folder
-				if !helper.HasDir(outputFolder(args[0])) {
+			
+			// Get output directory
+			outputDir := outputFolder()
+			if outputDir != "" {
+				fmt.Println("Output folder provided:", outputDir)
+				// Check if the output folder exists, if not create it
+				if !helper.HasDir(outputDir) {
 					fmt.Println("Output folder does not exist")
-					os.MkdirAll(outputFolder(args[0]), os.ModePerm)
-					fmt.Println("Output folder created: ", outputFolder(args[0]))
+					os.MkdirAll(outputDir, os.ModePerm)
+					fmt.Println("Output folder created: ", outputDir)
 				}
 			}
+			
 			for _, file := range files {
 				newname := slug.Make(file.FileName) + file.Ext
-				newpath := file.Folder + newname
-				newfile := model.File{
-					FullPath: newpath,
-					Folder:   file.Folder,
-					File:     newname,
-					FileName: strings.TrimSuffix(newname, file.Ext),
-					Ext:      file.Ext,
+				
+				// If original name is already slug-formatted, skip
+				if newname == file.File {
+					continue
 				}
-				// if output folder is provided, move the file to the output folder
-				if outputFolder("") != "" {
-					// fmt.Println(outputFolder(file.Folder))
-					newpath = outputFolder(file.Folder) + "/" + newname
-					newfile = model.File{
+				
+				// Handle outputDir differently if specified
+				if outputDir != "" {
+					var targetDir string
+					if isRecursive {
+						// Preserve directory structure under output folder
+						targetDir = getTargetPath(sourceDir, file.FullPath, outputDir)
+					} else {
+						targetDir = outputDir
+					}
+					
+					// Ensure target directory exists
+					if !helper.HasDir(targetDir) {
+						os.MkdirAll(targetDir, os.ModePerm)
+					}
+					
+					newpath := filepath.Join(targetDir, newname)
+					newfile := model.File{
 						FullPath: newpath,
-						Folder:   outputFolder(file.Folder),
+						Folder:   targetDir,
 						File:     newname,
 						FileName: strings.TrimSuffix(newname, file.Ext),
 						Ext:      file.Ext,
 					}
-					// replace the file name with the new name
-					if newname != file.File {
-						// exec.Command("cp", file.FullPath, newpath).Run()
-						helper.CopyFile(file, newfile)
-						fmt.Println(newfile.File)
-					}
+					
+					// Copy the file with new name to output folder
+					helper.CopyFile(file, newfile)
+					fmt.Println(file.FullPath, "→", newpath)
 				} else {
-					// replace the file name with the new name
-					if newname != file.File {
-						helper.MoveFile(file, newfile)
-						fmt.Println(newfile.File)
+					// Rename the file in place
+					newpath := filepath.Join(file.Folder, newname)
+					newfile := model.File{
+						FullPath: newpath,
+						Folder:   file.Folder,
+						File:     newname,
+						FileName: strings.TrimSuffix(newname, file.Ext),
+						Ext:      file.Ext,
 					}
+					
+					helper.MoveFile(file, newfile)
+					fmt.Println(file.FullPath, "→", newpath)
 				}
 			}
 		}
