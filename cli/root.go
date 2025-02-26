@@ -16,7 +16,7 @@ import (
 var isRecursive bool
 
 // Version can be set via ldflags during build
-var Version = "0.0.4-alpha"
+var Version = "0.0.4-beta"
 
 // RootCmd is the root command for the CLI
 var RootCmd = &cobra.Command{
