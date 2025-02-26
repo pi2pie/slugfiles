@@ -38,7 +38,11 @@ After installation, verify it's working correctly:
 slugfiles --version
 ```
 
-### Uninstalling
+### From Releases
+
+Download the appropriate binary for your platform from the [releases page](https://github.com/pi2pie/slugfiles/releases).
+
+## Uninstalling
 
 To remove the Slugfiles binary from your system:
 
@@ -49,10 +53,6 @@ go clean -i github.com/pi2pie/slugfiles
 # Or manually delete the binary from your GOPATH/bin directory
 rm $(go env GOPATH)/bin/slugfiles
 ```
-
-### From Releases
-
-Download the appropriate binary for your platform from the [releases page](https://github.com/pi2pie/slugfiles/releases).
 
 ## Usage
 
