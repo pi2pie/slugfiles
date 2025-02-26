@@ -21,6 +21,35 @@ Slugfiles is a command-line tool written in Go that converts filenames and direc
 go install github.com/pi2pie/slugfiles@latest
 ```
 
+### From Source
+
+```bash
+# Clone the repository
+git clone https://github.com/pi2pie/slugfiles.git
+cd slugfiles
+
+# Build and install
+go install
+```
+
+After installation, verify it's working correctly:
+
+```bash
+slugfiles --version
+```
+
+### Uninstalling
+
+To remove the Slugfiles binary from your system:
+
+```bash
+# Remove the binary 
+go clean -i github.com/pi2pie/slugfiles
+
+# Or manually delete the binary from your GOPATH/bin directory
+rm $(go env GOPATH)/bin/slugfiles
+```
+
 ### From Releases
 
 Download the appropriate binary for your platform from the [releases page](https://github.com/pi2pie/slugfiles/releases).
