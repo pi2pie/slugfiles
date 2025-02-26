@@ -25,7 +25,6 @@ func GetSeparator() string {
 	return "/"
 }
 
-
 // HasFile : Check if file exists in the current directory
 func HasFile(filename string) bool {
 	if info, err := os.Stat(filename); os.IsNotExist(err) {
@@ -35,58 +34,82 @@ func HasFile(filename string) bool {
 	}
 }
 
-// HasDir : Check if the dir is valid
-func HasDir(dirname string) bool {
-	if info, err := os.Stat(dirname); os.IsNotExist(err) {
+// HasDir checks if a directory exists
+func HasDir(path string) bool {
+	info, err := os.Stat(path)
+	if os.IsNotExist(err) {
 		return false
-	} else {
-		return info.IsDir()
 	}
+	return info.IsDir()
 }
 
-// GetFiles :
-func GetFiles(folder string, isRecursive bool) ([]model.File, error) {
-	var files []model.File
+// GetFiles returns a list of files in a directory
+// If recursive is true, it will recursively get files from subdirectories
+func GetFiles(path string, recursive bool) ([]model.File, error) {
+	files := []model.File{}
 
-	if isRecursive {
-		err := filepath.Walk(folder, func(path string, info os.FileInfo, walkErr error) error {
-			file, err := filepath.Abs(path)
+	// Check if path exists
+	if !HasDir(path) {
+		return files, fmt.Errorf("directory does not exist: %s", path)
+	}
+
+	// Ensure path ends with separator
+	if !strings.HasSuffix(path, string(os.PathSeparator)) {
+		path += string(os.PathSeparator)
+	}
+
+	if recursive {
+		// Walk through all directories recursively
+		err := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
 			if err != nil {
+				return err
+			}
+			
+			// Skip directories themselves
+			if info.IsDir() {
 				return nil
 			}
 
-			if !info.IsDir() {
-				files = append(files, model.ConstructFile(file))
+			folder := filepath.Dir(filePath)
+			if !strings.HasSuffix(folder, string(os.PathSeparator)) {
+				folder += string(os.PathSeparator)
 			}
+
+			file := model.File{
+				FullPath: filePath,
+				Folder:   folder,
+				File:     info.Name(),
+				FileName: strings.TrimSuffix(info.Name(), filepath.Ext(info.Name())),
+				Ext:      filepath.Ext(info.Name()),
+			}
+			files = append(files, file)
 			return nil
 		})
-
 		return files, err
 	} else {
-		f, err := os.Open(folder)
+		// Non-recursive mode - only process files in the top directory
+		fileInfos, err := os.ReadDir(path)
 		if err != nil {
 			return files, err
 		}
-		defer f.Close()
 
-		if fileinfo, err := f.Readdir(-1); err == nil {
-			pathSeparator := GetSeparator()
-			for _, file := range fileinfo {
-				if !file.IsDir() {
-					folder, err := filepath.Abs(folder)
-					if err != nil {
-						return files, err
-					}
-					files = append(files, model.ConstructFile(folder+pathSeparator+file.Name()))
-				}
+		for _, fileInfo := range fileInfos {
+			// Skip directories
+			if fileInfo.IsDir() {
+				continue
 			}
-		} else {
-			return files, err
+
+			file := model.File{
+				FullPath: path + fileInfo.Name(),
+				Folder:   path,
+				File:     fileInfo.Name(),
+				FileName: strings.TrimSuffix(fileInfo.Name(), filepath.Ext(fileInfo.Name())),
+				Ext:      filepath.Ext(fileInfo.Name()),
+			}
+			files = append(files, file)
 		}
-
+		return files, nil
 	}
-
-	return files, nil
 }
 
 // GetNewFilePath :
@@ -105,61 +128,30 @@ func GetSubfolder(file model.File, sourceFolder string) string {
 	return strings.TrimPrefix(file.Folder, sourceFolder)
 }
 
-// move file
-func MoveFile(src, dest model.File) error {
-	source, err := os.Open(src.FullPath)
-	if err != nil {
-		return err
-	}
-	defer source.Close()
-	// Create the target folder at destination if not exists (for subfolder only)
-	// Root target folder must exists, else error will be thrown. Validation is performed earlier on
-	if _, err := os.Stat(dest.Folder); os.IsNotExist(err) {
-		if err = os.MkdirAll(dest.Folder, os.ModePerm); err != nil {
-			return err
-		}
-	}
-	destination, err := os.Create(dest.FullPath)
-	if err != nil {
-		return err
-	}
-	defer destination.Close()
-	
-	// copy the file to the destination
-	// and delete the original file
-	if _, err = io.Copy(destination, source); err != nil {
-		return err
-	}
-	
-	if err = os.Remove(src.FullPath); err != nil {
-		return err
-	}
-	return nil
+// MoveFile renames a file
+func MoveFile(oldFile model.File, newFile model.File) error {
+	return os.Rename(oldFile.FullPath, newFile.FullPath)
 }
 
-// copy file
-func CopyFile(src, dest model.File) error {
-	source, err := os.Open(src.FullPath)
+// CopyFile copies a file
+func CopyFile(srcFile model.File, destFile model.File) error {
+	src, err := os.Open(srcFile.FullPath)
 	if err != nil {
 		return err
 	}
-	defer source.Close()
+	defer src.Close()
 
-	// Create the target folder at destination if not exists (for subfolder only)
-	// Root target folder must exists, else error will be thrown. Validation is performed earlier on
-	if _, err := os.Stat(dest.Folder); os.IsNotExist(err) {
-		if err = os.MkdirAll(dest.Folder, os.ModePerm); err != nil {
-			return err
-		}
+	// Create destination directory if it doesn't exist
+	if err := os.MkdirAll(destFile.Folder, 0755); err != nil {
+		return err
 	}
 
-	destination, err := os.Create(dest.FullPath)
-
+	dst, err := os.Create(destFile.FullPath)
 	if err != nil {
 		return err
 	}
-	defer destination.Close()
-	_, err = io.Copy(destination, source)
+	defer dst.Close()
 
+	_, err = io.Copy(dst, src)
 	return err
 }
