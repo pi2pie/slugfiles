@@ -1,7 +1,9 @@
 ### Misc ###
 /sample
 /sample-out
+/sample-alias
 /output
+.vscode
 
 ### Go ###
 
