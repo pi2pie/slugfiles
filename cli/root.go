@@ -14,9 +14,10 @@ import (
 )
 
 var isRecursive bool
+var isCaseSensitive bool
 
 // Version can be set via ldflags during build
-var Version = "0.0.4-beta"
+var Version = "0.0.4-beta.1"
 
 // RootCmd is the root command for the CLI
 var RootCmd = &cobra.Command{
@@ -29,6 +30,7 @@ func init() {
 	RootCmd.CompletionOptions.DisableDefaultCmd = true
 	RootCmd.PersistentFlags().StringP("output", "o", "", "Output directory")
 	RootCmd.PersistentFlags().BoolVarP(&isRecursive, "recursive", "r", false, "Process directories recursively")
+	RootCmd.PersistentFlags().BoolVarP(&isCaseSensitive, "case-sensitive", "c", false, "Case sensitive renaming")
 	RootCmd.AddCommand(renameCmd)
 }
 
@@ -75,6 +77,13 @@ var renameCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Rename command called")
+
+		// Check case sensitivity flag
+		if isCaseSensitive {
+			slug.Lowercase = false
+		} else {
+			slug.Lowercase = true
+		}
 
 		if args[0] != "" {
 				// Clean and normalize the source directory path
