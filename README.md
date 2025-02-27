@@ -2,9 +2,16 @@
 
 A lightweight command-line utility for transforming file/directory names into clean, URL-friendly slugs.
 
+>[!Note]
+>
+> The core functionality is provided by the [slug](https://github.com/gosimple/slug) package.
+>
+> The slug transformation process converts filenames to URL-friendly format by transliterating Unicode characters to ASCII (including converting non-ASCII characters to their English phonetic equivalents), converting spaces to hyphens, removing special characters, and ensuring lowercase output by default. Use the `--case-sensitive` flag (`-c`) to preserve uppercase letters in the output. More details see the [usage](#usage) section.
+
+
 ## Introduction
 
-Slugfiles is a command-line tool written in Go that converts filenames and directory paths into web-friendly slugs. It's perfect for bulk renaming files for web projects, content management systems, or any situation where you need normalized filenames. Slugfiles helps you:
+Slugfiles is a command-line tool written in Go that converts filenames and directory paths into URL-friendly slugs. It's perfect for bulk renaming files for web projects, content management systems, or any situation where you need normalized filenames. Slugfiles helps you:
 
 - Remove special characters from filenames
 - Convert spaces to hyphens
@@ -57,6 +64,42 @@ rm $(go env GOPATH)/bin/slugfiles
 ## Usage
 
 ```bash
+$ slugfiles
+
+Rename files in a directory to user friendly slugs.
+
+Usage:
+  slugfiles [command]
+
+Available Commands:
+  help        Help about any command
+  rename      Rename files in a directory to user friendly slugs.
+
+Flags:
+  -c, --case-sensitive   Case sensitive renaming
+  -h, --help             help for slugfiles
+  -o, --output string    Output directory
+  -r, --recursive        Process directories recursively
+  -v, --version          version for slugfiles
+
+Use "slugfiles [command] --help" for more information about a command.
+```
+
+### Recursive Mode
+
+By default, Slugfiles only processes files in the specified directory without entering subdirectories. When you use the `--recursive` flag, it will process all files in the specified directory and all of its subdirectories.
+
+### Output Directory
+
+By default, Slugfiles renames files in the original directory. If you want to save the renamed files to a different directory, use the `--output` flag. The output directory must exist before running the command.
+
+### Case Sensitivity
+
+By default, Slugfiles converts filenames to lowercase. If you want to preserve the original case of the filenames, use the `--case-sensitive` flag.
+
+### Some examples:
+
+```bash
 # Basic usage - rename files in a directory (only top-level files)
 slugfiles rename /path/to/directory
 
@@ -64,15 +107,17 @@ slugfiles rename /path/to/directory
 slugfiles rename --recursive /path/to/directory
 
 # Rename files and save to output directory
-slugfiles rename --output new-files /path/to/directory
+slugfiles rename //path/to/directory --output /path/to/output-directory
 
 # Rename files in all subdirectories and save to output directory
-slugfiles rename --recursive --output new-files /path/to/directory
+slugfiles rename --recursive /path//path/to/directory --output /path/to/output-directory
+
+
+# Rename files in a case-sensitive manner
+slugfiles rename --case-sensitive /path/to/directory
+# Rename files in a case-sensitive manner and save to output directory
+slugfiles rename --case-sensitive /path//path/to/directory --output /path/to/output-directory
 ```
-
-### Recursive Mode
-
-By default, Slugfiles only processes files in the specified directory without entering subdirectories. When you use the `--recursive` flag, it will process all files in the specified directory and all of its subdirectories.
 
 ## Building and Releasing
 
