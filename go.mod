@@ -3,7 +3,7 @@ module github.com/pi2pie/slugfiles
 go 1.22.0
 
 require (
-	github.com/gosimple/slug v1.14.0
+	github.com/gosimple/slug v1.15.0
 	github.com/spf13/cobra v1.8.0
 )
 
