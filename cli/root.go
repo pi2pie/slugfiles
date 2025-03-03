@@ -17,7 +17,7 @@ var isRecursive bool
 var isCaseSensitive bool
 
 // Version can be set via ldflags during build
-var Version = "0.0.4-beta.1"
+var Version = "0.0.4-beta.2"
 
 // RootCmd is the root command for the CLI
 var RootCmd = &cobra.Command{
@@ -86,7 +86,7 @@ var renameCmd = &cobra.Command{
 		}
 
 		if args[0] != "" {
-				// Clean and normalize the source directory path
+			// Clean and normalize the source directory path
 			sourceDir := filepath.Clean(args[0])
 			
 			// Get files according to recursive flag
@@ -98,10 +98,11 @@ var renameCmd = &cobra.Command{
 			fmt.Println("______________________")
 			fmt.Println("Files in the folder: ", sourceDir)
 			fmt.Println(" ")
-			for _, file := range files {
-				fmt.Println(file.File)
-			}
-
+			
+			// Print files in tree structure using the helper function
+			helper.PrintFilesTree(files, sourceDir)
+			fmt.Println(" ")
+			
 			fmt.Println("______________________")
 			fmt.Println("Renaming files...")
 			fmt.Println(" ")

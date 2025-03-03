@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/pi2pie/slugfiles/model"
@@ -154,4 +155,102 @@ func CopyFile(srcFile model.File, destFile model.File) error {
 
 	_, err = io.Copy(dst, src)
 	return err
+}
+
+// PrintFilesTree prints files in a tree structure grouped by directories
+func PrintFilesTree(files []model.File, sourceDir string) {
+	// Group files by directory for better organization
+	filesByDir := make(map[string][]model.File)
+	for _, file := range files {
+		relDir, _ := filepath.Rel(sourceDir, file.Folder)
+		if relDir == "." {
+			relDir = "" // Root directory special case
+		}
+		filesByDir[relDir] = append(filesByDir[relDir], file)
+	}
+	
+	// Sort directories for consistent display
+	var dirs []string
+	for dir := range filesByDir {
+		dirs = append(dirs, dir)
+	}
+	sort.Strings(dirs)
+	
+	// Reorder dirs to put root directory at the end
+	var rootIndex int
+	var hasRootFiles bool
+	for i, dir := range dirs {
+		if dir == "" {
+			rootIndex = i
+			hasRootFiles = true
+			break
+		}
+	}
+	
+	// If root files exist, move them to the end
+	if hasRootFiles {
+		dirs = append(append(dirs[:rootIndex], dirs[rootIndex+1:]...), "")
+	}
+	
+	// Print root directory name
+	fmt.Println(".")
+	
+	// Print files by directory
+	for i, dir := range dirs {
+		dirFiles := filesByDir[dir]
+		isLastDir := i == len(dirs)-1
+		
+		if dir == "" {
+			// Root directory files (now at the end)
+			for j, file := range dirFiles {
+				prefix := "├── "
+				if j == len(dirFiles)-1 {
+					prefix = "└── "
+				}
+				fmt.Println(prefix + file.File)
+			}
+		} else {
+			// Calculate directory nesting level
+			level := strings.Count(dir, string(os.PathSeparator)) + 1
+			
+			// Adjust indentation for the last directory group if no root files
+			var indent string
+			if isLastDir && !hasRootFiles && level > 1 {
+				indent = strings.Repeat("│   ", level-2) + "    "
+			} else {
+				indent = strings.Repeat("│   ", level-1)
+			}
+			
+			// Print directory name with proper indentation
+			dirPrefix := "├── "
+			if isLastDir && !hasRootFiles {
+				dirPrefix = "└── "
+			}
+			
+			// For directories after root level
+			if level == 1 {
+				fmt.Println(dirPrefix + dir + "/")
+			} else {
+				pathParts := strings.Split(dir, string(os.PathSeparator))
+				fmt.Println(indent + dirPrefix + pathParts[len(pathParts)-1] + "/")
+			}
+			
+			// Print files in this directory
+			for j, file := range dirFiles {
+				// Adjust file indentation for the last directory group if no root files
+				var fileIndent string
+				if isLastDir && !hasRootFiles {
+					fileIndent = strings.Repeat("│   ", level-1) + "    "
+				} else {
+					fileIndent = strings.Repeat("│   ", level)
+				}
+				
+				filePrefix := "├── "
+				if j == len(dirFiles)-1 {
+					filePrefix = "└── "
+				}
+				fmt.Println(fileIndent + filePrefix + file.File)
+			}
+		}
+	}
 }
