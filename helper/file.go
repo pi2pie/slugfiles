@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 
 	"github.com/pi2pie/slugfiles/model"
@@ -154,4 +155,52 @@ func CopyFile(srcFile model.File, destFile model.File) error {
 
 	_, err = io.Copy(dst, src)
 	return err
+}
+
+// PrintFilesTree prints files in a tree structure grouped by directories
+func PrintFilesTree(files []model.File, sourceDir string) {
+	// Group files by directory for better organization
+	filesByDir := make(map[string][]model.File)
+	for _, file := range files {
+		relDir, _ := filepath.Rel(sourceDir, file.Folder)
+		if relDir == "." {
+			relDir = "" // Root directory special case
+		}
+		filesByDir[relDir] = append(filesByDir[relDir], file)
+	}
+	
+	// Sort directories for consistent display
+	var dirs []string
+	for dir := range filesByDir {
+		dirs = append(dirs, dir)
+	}
+	sort.Strings(dirs)
+	
+	// Print files by directory
+	for i, dir := range dirs {
+		if i > 0 {
+			fmt.Println()
+		}
+		
+		if dir == "" {
+			// Root directory
+			for j, file := range filesByDir[dir] {
+				prefix := "├── "
+				if j == len(filesByDir[dir])-1 {
+					prefix = "└── "
+				}
+				fmt.Println(prefix + file.File)
+			}
+		} else {
+			// Subdirectory
+			fmt.Println(dir + "/")
+			for j, file := range filesByDir[dir] {
+				prefix := "  ├── "
+				if j == len(filesByDir[dir])-1 {
+					prefix = "  └── "
+				}
+				fmt.Println(prefix + file.File)
+			}
+		}
+	}
 }
