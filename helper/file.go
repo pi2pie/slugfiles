@@ -198,6 +198,7 @@ func PrintFilesTree(files []model.File, sourceDir string) {
 	// Print files by directory
 	for i, dir := range dirs {
 		dirFiles := filesByDir[dir]
+		isLastDir := i == len(dirs)-1
 		
 		if dir == "" {
 			// Root directory files (now at the end)
@@ -211,11 +212,18 @@ func PrintFilesTree(files []model.File, sourceDir string) {
 		} else {
 			// Calculate directory nesting level
 			level := strings.Count(dir, string(os.PathSeparator)) + 1
-			indent := strings.Repeat("│   ", level-1)
+			
+			// Adjust indentation for the last directory group if no root files
+			var indent string
+			if isLastDir && !hasRootFiles && level > 1 {
+				indent = strings.Repeat("│   ", level-2) + "    "
+			} else {
+				indent = strings.Repeat("│   ", level-1)
+			}
 			
 			// Print directory name with proper indentation
 			dirPrefix := "├── "
-			if i == len(dirs)-1 && !hasRootFiles {
+			if isLastDir && !hasRootFiles {
 				dirPrefix = "└── "
 			}
 			
@@ -229,7 +237,14 @@ func PrintFilesTree(files []model.File, sourceDir string) {
 			
 			// Print files in this directory
 			for j, file := range dirFiles {
-				fileIndent := strings.Repeat("│   ", level)
+				// Adjust file indentation for the last directory group if no root files
+				var fileIndent string
+				if isLastDir && !hasRootFiles {
+					fileIndent = strings.Repeat("│   ", level-1) + "    "
+				} else {
+					fileIndent = strings.Repeat("│   ", level)
+				}
+				
 				filePrefix := "├── "
 				if j == len(dirFiles)-1 {
 					filePrefix = "└── "
