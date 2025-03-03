@@ -176,30 +176,65 @@ func PrintFilesTree(files []model.File, sourceDir string) {
 	}
 	sort.Strings(dirs)
 	
+	// Reorder dirs to put root directory at the end
+	var rootIndex int
+	var hasRootFiles bool
+	for i, dir := range dirs {
+		if dir == "" {
+			rootIndex = i
+			hasRootFiles = true
+			break
+		}
+	}
+	
+	// If root files exist, move them to the end
+	if hasRootFiles {
+		dirs = append(append(dirs[:rootIndex], dirs[rootIndex+1:]...), "")
+	}
+	
+	// Print root directory name
+	fmt.Println(".")
+	
 	// Print files by directory
 	for i, dir := range dirs {
-		if i > 0 {
-			fmt.Println()
-		}
+		dirFiles := filesByDir[dir]
 		
 		if dir == "" {
-			// Root directory
-			for j, file := range filesByDir[dir] {
+			// Root directory files (now at the end)
+			for j, file := range dirFiles {
 				prefix := "├── "
-				if j == len(filesByDir[dir])-1 {
+				if j == len(dirFiles)-1 {
 					prefix = "└── "
 				}
 				fmt.Println(prefix + file.File)
 			}
 		} else {
-			// Subdirectory
-			fmt.Println(dir + "/")
-			for j, file := range filesByDir[dir] {
-				prefix := "  ├── "
-				if j == len(filesByDir[dir])-1 {
-					prefix = "  └── "
+			// Calculate directory nesting level
+			level := strings.Count(dir, string(os.PathSeparator)) + 1
+			indent := strings.Repeat("│   ", level-1)
+			
+			// Print directory name with proper indentation
+			dirPrefix := "├── "
+			if i == len(dirs)-1 && !hasRootFiles {
+				dirPrefix = "└── "
+			}
+			
+			// For directories after root level
+			if level == 1 {
+				fmt.Println(dirPrefix + dir + "/")
+			} else {
+				pathParts := strings.Split(dir, string(os.PathSeparator))
+				fmt.Println(indent + dirPrefix + pathParts[len(pathParts)-1] + "/")
+			}
+			
+			// Print files in this directory
+			for j, file := range dirFiles {
+				fileIndent := strings.Repeat("│   ", level)
+				filePrefix := "├── "
+				if j == len(dirFiles)-1 {
+					filePrefix = "└── "
 				}
-				fmt.Println(prefix + file.File)
+				fmt.Println(fileIndent + filePrefix + file.File)
 			}
 		}
 	}

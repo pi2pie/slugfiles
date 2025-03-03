@@ -101,6 +101,7 @@ var renameCmd = &cobra.Command{
 			
 			// Print files in tree structure using the helper function
 			helper.PrintFilesTree(files, sourceDir)
+			fmt.Println(" ")
 			
 			fmt.Println("______________________")
 			fmt.Println("Renaming files...")
