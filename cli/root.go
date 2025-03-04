@@ -18,7 +18,7 @@ var isCaseSensitive bool
 var isDryRun bool
 
 // Version can be set via ldflags during build
-var Version = "0.0.4-rc.3"
+var Version = "0.0.4-rc.4"
 
 // RootCmd is the root command for the CLI
 var RootCmd = &cobra.Command{
@@ -95,8 +95,12 @@ var renameCmd = &cobra.Command{
 				// Check if the output folder exists, if not create it
 				if !helper.HasDir(outputDir) {
 					fmt.Println("Output folder does not exist")
-					os.MkdirAll(outputDir, os.ModePerm)
-					fmt.Println("Output folder created: ", outputDir)
+					if !isDryRun {
+						os.MkdirAll(outputDir, os.ModePerm)
+						fmt.Println("Output folder created: ", outputDir)
+					} else {
+						fmt.Println("[DRY RUN] Would create output folder: ", outputDir)
+					}
 				}
 			}
 			
@@ -122,10 +126,13 @@ var renameCmd = &cobra.Command{
 						targetDir = outputDir
 					}
 					
-					// Ensure target directory exists
-					if !helper.HasDir(targetDir) {
-						os.MkdirAll(targetDir, os.ModePerm)
-					}
+					// Inside the file processing loop where directories are created:
+                    // Ensure target directory exists
+                    if !helper.HasDir(targetDir) {
+                        if !isDryRun {
+                            os.MkdirAll(targetDir, os.ModePerm)
+                        }
+                    }
 					
 					newpath := filepath.Join(targetDir, newname)
 					newfile := model.File{
@@ -204,21 +211,21 @@ var renameCmd = &cobra.Command{
                         // we make a new directory with the slug name
 						newDir := filepath.Join(filepath.Dir(parentDir), slugDirName)
 						if isDryRun {
-                            fmt.Println("[DRY RUN] Would rename directory:", dir, "→", newDir)
-                        } else {
-                            os.MkdirAll(newDir, os.ModePerm)
-                            fmt.Println(dir, "→", newDir)
-                            // then we move all files from the old directory to the new one
-                            if err := helper.MoveFilesByPath(dir, newDir); err != nil {
-                                fmt.Println("Error moving files:", err)
-                            }
-                            // and finally we remove the old directory
-                            if err := os.RemoveAll(dir); err != nil {
-                                fmt.Println("Error removing old directory:", err)
-                            } else {
-                                fmt.Println("Removed old directory:", dir)
-                            }
-                        }
+							fmt.Println("[DRY RUN] Would rename directory:", dir, "→", newDir)
+						} else {
+							os.MkdirAll(newDir, os.ModePerm)
+							fmt.Println(dir, "→", newDir)
+							// then we move all files from the old directory to the new one
+							if err := helper.MoveFilesByPath(dir, newDir); err != nil {
+								fmt.Println("Error moving files:", err)
+							}
+							// and finally we remove the old directory
+							if err := os.RemoveAll(dir); err != nil {
+								fmt.Println("Error removing old directory:", err)
+							} else {
+								fmt.Println("Removed old directory:", dir)
+							}
+						}
                     }
                 }
             }
