@@ -17,7 +17,7 @@ var isRecursive bool
 var isCaseSensitive bool
 
 // Version can be set via ldflags during build
-var Version = "0.0.4-beta.2"
+var Version = "0.0.4-rc"
 
 // RootCmd is the root command for the CLI
 var RootCmd = &cobra.Command{
@@ -122,8 +122,11 @@ var renameCmd = &cobra.Command{
 			for _, file := range files {
 				newname := slug.Make(file.FileName) + file.Ext
 				
-				// If original name is already slug-formatted, skip
-				if newname == file.File {
+				// Check if file needs renaming
+				needsRenaming := newname != file.File
+    
+				// Only skip if the file doesn't need renaming AND we're not copying to output folder
+				if !needsRenaming && outputDir == "" {
 					continue
 				}
 				
@@ -153,20 +156,28 @@ var renameCmd = &cobra.Command{
 					
 					// Copy the file with new name to output folder
 					helper.CopyFile(file, newfile)
-					fmt.Println(file.FullPath, "→", newpath)
-				} else {
-					// Rename the file in place
-					newpath := filepath.Join(file.Folder, newname)
-					newfile := model.File{
-						FullPath: newpath,
-						Folder:   file.Folder,
-						File:     newname,
-						FileName: strings.TrimSuffix(newname, file.Ext),
-						Ext:      file.Ext,
+        
+					if needsRenaming {
+						fmt.Println(file.FullPath, "→", newpath)
+					} else {
+						fmt.Println(file.FullPath, "→ (copied to)", newpath)
 					}
-					
-					helper.MoveFile(file, newfile)
-					fmt.Println(file.FullPath, "→", newpath)
+				} else {
+					// Only rename if needed (name is not already slug-formatted)
+					if needsRenaming {
+						// Rename the file in place
+						newpath := filepath.Join(file.Folder, newname)
+						newfile := model.File{
+							FullPath: newpath,
+							Folder:   file.Folder,
+							File:     newname,
+							FileName: strings.TrimSuffix(newname, file.Ext),
+							Ext:      file.Ext,
+						}
+						
+						helper.MoveFile(file, newfile)
+						fmt.Println(file.FullPath, "→", newpath)
+					}
 				}
 			}
 		}
