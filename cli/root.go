@@ -50,27 +50,6 @@ func outputFolder() string {
 	return output
 }
 
-// getTargetPath calculates the target path for a file in recursive mode
-func getTargetPath(sourceBase, filePath, outputDir string) string {
-	// Normalize paths
-	sourceBase = filepath.Clean(sourceBase)
-	filePath = filepath.Clean(filePath)
-	
-	// Get the relative path from source base directory
-	relPath, err := filepath.Rel(sourceBase, filepath.Dir(filePath))
-	if err != nil {
-		// Fallback if we can't get relative path
-		return outputDir
-	}
-	
-	if relPath == "." {
-		return outputDir
-	}
-	
-	// Combine output directory with relative path
-	return filepath.Join(outputDir, relPath) + string(os.PathSeparator)
-}
-
 var renameCmd = &cobra.Command{
 	Use:   "rename [folder]",
 	Short: "Rename files in a directory to user friendly slugs.",
@@ -119,6 +98,7 @@ var renameCmd = &cobra.Command{
 				}
 			}
 			
+			// Process files
 			for _, file := range files {
 				newname := slug.Make(file.FileName) + file.Ext
 				
@@ -135,7 +115,7 @@ var renameCmd = &cobra.Command{
 					var targetDir string
 					if isRecursive {
 						// Preserve directory structure under output folder
-						targetDir = getTargetPath(sourceDir, file.FullPath, outputDir)
+						targetDir = helper.GetSlugifiedTargetPath(sourceDir, file.Folder, outputDir, slug.Make)
 					} else {
 						targetDir = outputDir
 					}
@@ -180,6 +160,45 @@ var renameCmd = &cobra.Command{
 					}
 				}
 			}
+			// If recursive and no output directory, rename directories
+            if isRecursive && outputDir == "" {
+                fmt.Println("______________________")
+                fmt.Println("Renaming directories...")
+                fmt.Println(" ")
+                
+                // Get unique directories
+                dirs := helper.GetDirectories(files, sourceDir)
+                
+                // Sort directories by depth (deepest first)
+                helper.SortDirsByDepth(dirs)
+                
+                // Rename directories
+                for _, dir := range dirs {
+                    dirName := filepath.Base(dir)
+                    parentDir := filepath.Dir(dir)
+                    
+                    // Create slug for directory name
+                    slugDirName := slug.Make(dirName)
+                    
+                    if slugDirName != dirName {
+                        // we make a new directory with the slug name
+						newDir := filepath.Join(filepath.Dir(parentDir), slugDirName)
+						os.MkdirAll(newDir, os.ModePerm)
+						fmt.Println(dir, "→", newDir)
+						// then we move all files from the old directory to the new one
+						if err := helper.MoveFilesByPath(dir, newDir); err != nil {
+							fmt.Println("Error moving files:", err)
+						}
+						// and finally we remove the old directory
+						if err := os.RemoveAll(dir); err != nil {
+							fmt.Println("Error removing old directory:", err)
+						} else {
+							fmt.Println("Removed old directory:", dir)
+						}
+                    }
+                }
+            }
+
 		}
 	},
 }

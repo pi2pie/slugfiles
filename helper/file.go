@@ -254,3 +254,158 @@ func PrintFilesTree(files []model.File, sourceDir string) {
 		}
 	}
 }
+
+// GetSlugifiedTargetPath calculates the target path with slugified directory names
+func GetSlugifiedTargetPath(sourceBase, filePath, outputDir string, slugFunc func(string) string) string {
+    // Normalize paths
+    sourceBase = filepath.Clean(sourceBase)
+    filePath = filepath.Clean(filePath)
+    
+    // Get the relative path from source base directory
+    relPath, err := filepath.Rel(sourceBase, filepath.Dir(filePath))
+    if err != nil {
+        // Fallback if we can't get relative path
+        return outputDir
+    }
+    
+    if relPath == "." {
+        return outputDir
+    }
+    
+    // Split the path and slugify each directory name
+    parts := strings.Split(relPath, string(os.PathSeparator))
+    for i, part := range parts {
+        parts[i] = slugFunc(part)
+    }
+    
+    // Join with the correct separator
+    slugifiedPath := strings.Join(parts, string(os.PathSeparator))
+    
+    // Combine output directory with slugified path
+    return filepath.Join(outputDir, slugifiedPath)
+}
+
+// SortDirsByDepth sorts directories by depth, deepest first
+func SortDirsByDepth(dirs []string) {
+    // Sort directories by depth (deepest first)
+    // to avoid renaming parent before child
+    sort.Slice(dirs, func(i, j int) bool {
+        // Count separators to determine depth
+        depthI := strings.Count(dirs[i], string(os.PathSeparator))
+        depthJ := strings.Count(dirs[j], string(os.PathSeparator))
+        
+        // If equal depth, sort alphabetically for deterministic ordering
+        if depthI == depthJ {
+            return dirs[i] > dirs[j] // Reverse alphabetical
+        }
+        
+        return depthI > depthJ // Higher depth comes first
+    })
+}
+
+// GetDirectories returns a list of unique directories from given files
+// Excludes the base directory if provided
+func GetDirectories(files []model.File, baseDir string) []string {
+    dirMap := make(map[string]bool)
+    
+    for _, file := range files {
+        dirPath := file.Folder
+        if dirPath != baseDir { // Skip the base directory
+            dirMap[dirPath] = true
+        }
+    }
+    
+    // Convert map to slice
+    dirs := make([]string, 0, len(dirMap))
+    for dir := range dirMap {
+        dirs = append(dirs, dir)
+    }
+    
+    return dirs
+}
+
+// MoveFilesByPath moves all file from source path to destination path
+func MoveFilesByPath(src, dst string) error {
+	// Check if source exists
+	if !HasDir(src) {
+		return fmt.Errorf("source directory does not exist: %s", src)
+	}
+	
+	// Get all files recursively from source
+	files, err := GetFiles(src, true)
+	if err != nil {
+		return err
+	}
+	
+	// Create destination directory if it doesn't exist
+	if err := os.MkdirAll(dst, 0755); err != nil {
+		return err
+	}
+	
+	// Ensure paths end with separator
+	if !strings.HasSuffix(src, string(os.PathSeparator)) {
+		src += string(os.PathSeparator)
+	}
+	if !strings.HasSuffix(dst, string(os.PathSeparator)) {
+		dst += string(os.PathSeparator)
+	}
+	
+	// Move each file
+	for _, file := range files {
+		// Get the relative path
+		relPath := strings.TrimPrefix(file.FullPath, src)
+		destPath := filepath.Join(dst, relPath)
+		
+		// Ensure destination directory exists
+		destDir := filepath.Dir(destPath)
+		if err := os.MkdirAll(destDir, 0755); err != nil {
+			return err
+		}
+		
+		// Move the file
+		if err := moveFile(file.FullPath, destPath); err != nil {
+			return err
+		}
+	}
+	
+	return nil
+}
+
+// moveFile moves a single file from src to dst
+func moveFile(src, dst string) error {
+	// First try a simple rename
+	if err := os.Rename(src, dst); err == nil {
+		return nil
+	}
+	
+	// If rename fails, try copy + delete approach
+	srcFile, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer srcFile.Close()
+	
+	dstFile, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer dstFile.Close()
+	
+	// Copy contents
+	if _, err = io.Copy(dstFile, srcFile); err != nil {
+		return err
+	}
+	
+	// Close both files before removing source
+	srcFile.Close()
+	dstFile.Close()
+	
+	// Preserve file permissions
+	srcInfo, err := os.Stat(src)
+	if err == nil {
+		os.Chmod(dst, srcInfo.Mode())
+	}
+	
+	// Delete original file
+	return os.Remove(src)
+}
