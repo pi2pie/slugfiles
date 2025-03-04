@@ -255,34 +255,32 @@ func PrintFilesTree(files []model.File, sourceDir string) {
 	}
 }
 
-// GetSlugifiedTargetPath calculates the target path with slugified directory names
-func GetSlugifiedTargetPath(sourceBase, filePath, outputDir string, slugFunc func(string) string) string {
-    // Normalize paths
-    sourceBase = filepath.Clean(sourceBase)
-    filePath = filepath.Clean(filePath)
-    
-    // Get the relative path from source base directory
-    relPath, err := filepath.Rel(sourceBase, filepath.Dir(filePath))
+// GetSlugifiedTargetPath creates the target path with slugified directory names
+func GetSlugifiedTargetPath(sourceRoot, sourceFolder, outputRoot string, slugFn func(string) string) string {
+    // Get the relative path from source root to the current folder
+    relPath, err := filepath.Rel(sourceRoot, sourceFolder)
     if err != nil {
-        // Fallback if we can't get relative path
-        return outputDir
+        // Fallback to output root if we can't determine relative path
+        return outputRoot
     }
     
+    // If it's the root directory itself
     if relPath == "." {
-        return outputDir
+        return outputRoot
     }
     
-    // Split the path and slugify each directory name
-    parts := strings.Split(relPath, string(os.PathSeparator))
-    for i, part := range parts {
-        parts[i] = slugFunc(part)
+    // Split the path into components
+    pathParts := strings.Split(filepath.ToSlash(relPath), "/")
+    
+    // Slugify each directory name
+    for i, part := range pathParts {
+        pathParts[i] = slugFn(part)
     }
     
-    // Join with the correct separator
-    slugifiedPath := strings.Join(parts, string(os.PathSeparator))
+    // Rejoin the path and combine with output root
+    slugifiedPath := filepath.Join(outputRoot, filepath.Join(pathParts...))
     
-    // Combine output directory with slugified path
-    return filepath.Join(outputDir, slugifiedPath)
+    return slugifiedPath
 }
 
 // SortDirsByDepth sorts directories by depth, deepest first

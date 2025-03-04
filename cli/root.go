@@ -18,7 +18,7 @@ var isCaseSensitive bool
 var isDryRun bool
 
 // Version can be set via ldflags during build
-var Version = "0.0.4-rc.2"
+var Version = "0.0.4-rc.3"
 
 // RootCmd is the root command for the CLI
 var RootCmd = &cobra.Command{
