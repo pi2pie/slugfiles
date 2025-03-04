@@ -15,9 +15,10 @@ import (
 
 var isRecursive bool
 var isCaseSensitive bool
+var isDryRun bool
 
 // Version can be set via ldflags during build
-var Version = "0.0.4-rc"
+var Version = "0.0.4-rc.2"
 
 // RootCmd is the root command for the CLI
 var RootCmd = &cobra.Command{
@@ -31,6 +32,7 @@ func init() {
 	RootCmd.PersistentFlags().StringP("output", "o", "", "Output directory")
 	RootCmd.PersistentFlags().BoolVarP(&isRecursive, "recursive", "r", false, "Process directories recursively")
 	RootCmd.PersistentFlags().BoolVarP(&isCaseSensitive, "case-sensitive", "c", false, "Case sensitive renaming")
+	RootCmd.PersistentFlags().BoolVarP(&isDryRun, "dry-run", "d", false, "Simulate renaming without making changes")
 	RootCmd.AddCommand(renameCmd)
 }
 
@@ -135,12 +137,22 @@ var renameCmd = &cobra.Command{
 					}
 					
 					// Copy the file with new name to output folder
-					helper.CopyFile(file, newfile)
+                    if !isDryRun {
+                        helper.CopyFile(file, newfile)
+                    }
         
 					if needsRenaming {
-						fmt.Println(file.FullPath, "→", newpath)
+						if isDryRun {
+                            fmt.Println("[DRY RUN] Would rename:", file.FullPath, "→", newpath)
+                        } else {
+                            fmt.Println(file.FullPath, "→", newpath)
+                        }
 					} else {
-						fmt.Println(file.FullPath, "→ (copied to)", newpath)
+						if isDryRun {
+                            fmt.Println("[DRY RUN] Would copy:", file.FullPath, "→", newpath)
+                        } else {
+                            fmt.Println(file.FullPath, "→ (copied to)", newpath)
+                        }
 					}
 				} else {
 					// Only rename if needed (name is not already slug-formatted)
@@ -155,15 +167,23 @@ var renameCmd = &cobra.Command{
 							Ext:      file.Ext,
 						}
 						
-						helper.MoveFile(file, newfile)
-						fmt.Println(file.FullPath, "→", newpath)
+						if !isDryRun {
+                            helper.MoveFile(file, newfile)
+                            fmt.Println(file.FullPath, "→", newpath)
+                        } else {
+                            fmt.Println("[DRY RUN] Would rename:", file.FullPath, "→", newpath)
+                        }
 					}
 				}
 			}
 			// If recursive and no output directory, rename directories
             if isRecursive && outputDir == "" {
                 fmt.Println("______________________")
-                fmt.Println("Renaming directories...")
+                if isDryRun {
+                    fmt.Println("[DRY RUN] Preview of directory renaming (no changes will be made)...")
+                } else {
+                    fmt.Println("Renaming directories...")
+                }
                 fmt.Println(" ")
                 
                 // Get unique directories
@@ -183,18 +203,22 @@ var renameCmd = &cobra.Command{
                     if slugDirName != dirName {
                         // we make a new directory with the slug name
 						newDir := filepath.Join(filepath.Dir(parentDir), slugDirName)
-						os.MkdirAll(newDir, os.ModePerm)
-						fmt.Println(dir, "→", newDir)
-						// then we move all files from the old directory to the new one
-						if err := helper.MoveFilesByPath(dir, newDir); err != nil {
-							fmt.Println("Error moving files:", err)
-						}
-						// and finally we remove the old directory
-						if err := os.RemoveAll(dir); err != nil {
-							fmt.Println("Error removing old directory:", err)
-						} else {
-							fmt.Println("Removed old directory:", dir)
-						}
+						if isDryRun {
+                            fmt.Println("[DRY RUN] Would rename directory:", dir, "→", newDir)
+                        } else {
+                            os.MkdirAll(newDir, os.ModePerm)
+                            fmt.Println(dir, "→", newDir)
+                            // then we move all files from the old directory to the new one
+                            if err := helper.MoveFilesByPath(dir, newDir); err != nil {
+                                fmt.Println("Error moving files:", err)
+                            }
+                            // and finally we remove the old directory
+                            if err := os.RemoveAll(dir); err != nil {
+                                fmt.Println("Error removing old directory:", err)
+                            } else {
+                                fmt.Println("Removed old directory:", dir)
+                            }
+                        }
                     }
                 }
             }
