@@ -15,15 +15,27 @@ import (
 
 var isRecursive bool
 var isCaseSensitive bool
+var isDryRun bool
 
 // Version can be set via ldflags during build
-var Version = "0.0.4-rc"
+var Version = "0.0.5"
 
 // RootCmd is the root command for the CLI
 var RootCmd = &cobra.Command{
-	Use:     "slugfiles",
-	Short:   "Rename files in a directory to user friendly slugs.",
-	Version: Version,
+    Use:     "slugfiles [folder]",
+    Short:   "Rename files in a directory to user friendly slugs.",
+    Version: Version,
+    Args:    cobra.MaximumNArgs(1),
+    Run: func(cmd *cobra.Command, args []string) {
+        if len(args) == 1 {
+            // If a file path is provided, execute the rename command's logic
+            renameArgs := []string{args[0]}
+            renameCmd.Run(cmd, renameArgs)
+        } else {
+            // No argument: display help
+            cmd.Help()
+        }
+    },
 }
 
 func init() {
@@ -31,52 +43,31 @@ func init() {
 	RootCmd.PersistentFlags().StringP("output", "o", "", "Output directory")
 	RootCmd.PersistentFlags().BoolVarP(&isRecursive, "recursive", "r", false, "Process directories recursively")
 	RootCmd.PersistentFlags().BoolVarP(&isCaseSensitive, "case-sensitive", "c", false, "Case sensitive renaming")
+	RootCmd.PersistentFlags().BoolVarP(&isDryRun, "dry-run", "d", false, "Simulate renaming without making changes")
 	RootCmd.AddCommand(renameCmd)
 }
 
-// Rewritten outputFolder function to properly handle directory structures
-func outputFolder() string {
-	output, _ := RootCmd.PersistentFlags().GetString("output")
-	if output == "" {
-		return ""
-	}
-	
-	// Normalize and ensure output has trailing separator
-	output = filepath.Clean(output)
-	if !strings.HasSuffix(output, string(os.PathSeparator)) {
-		output += string(os.PathSeparator)
-	}
-	
-	return output
-}
-
-// getTargetPath calculates the target path for a file in recursive mode
-func getTargetPath(sourceBase, filePath, outputDir string) string {
-	// Normalize paths
-	sourceBase = filepath.Clean(sourceBase)
-	filePath = filepath.Clean(filePath)
-	
-	// Get the relative path from source base directory
-	relPath, err := filepath.Rel(sourceBase, filepath.Dir(filePath))
-	if err != nil {
-		// Fallback if we can't get relative path
-		return outputDir
-	}
-	
-	if relPath == "." {
-		return outputDir
-	}
-	
-	// Combine output directory with relative path
-	return filepath.Join(outputDir, relPath) + string(os.PathSeparator)
-}
-
 var renameCmd = &cobra.Command{
-	Use:   "rename [folder]",
+	Use:   "rename [folder] [flags]",
 	Short: "Rename files in a directory to user friendly slugs.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Rename command called")
+
+		// dealing with the output folder
+		outputFolder := func() string {
+			outputFlag, _ := cmd.Flags().GetString("output")
+			if outputFlag == "" {
+				return ""
+			}
+			// Normalize and ensure output has trailing separator
+			output := filepath.Clean(outputFlag)
+			if !strings.HasSuffix(output, string(os.PathSeparator)) {
+				output += string(os.PathSeparator)
+			}
+			
+			return output
+		}
 
 		// Check case sensitivity flag
 		if isCaseSensitive {
@@ -114,11 +105,16 @@ var renameCmd = &cobra.Command{
 				// Check if the output folder exists, if not create it
 				if !helper.HasDir(outputDir) {
 					fmt.Println("Output folder does not exist")
-					os.MkdirAll(outputDir, os.ModePerm)
-					fmt.Println("Output folder created: ", outputDir)
+					if !isDryRun {
+						os.MkdirAll(outputDir, os.ModePerm)
+						fmt.Println("Output folder created: ", outputDir)
+					} else {
+						fmt.Println("[DRY RUN] Would create output folder: ", outputDir)
+					}
 				}
 			}
 			
+			// Process files
 			for _, file := range files {
 				newname := slug.Make(file.FileName) + file.Ext
 				
@@ -135,15 +131,18 @@ var renameCmd = &cobra.Command{
 					var targetDir string
 					if isRecursive {
 						// Preserve directory structure under output folder
-						targetDir = getTargetPath(sourceDir, file.FullPath, outputDir)
+						targetDir = helper.GetSlugifiedTargetPath(sourceDir, file.Folder, outputDir, slug.Make)
 					} else {
 						targetDir = outputDir
 					}
 					
-					// Ensure target directory exists
-					if !helper.HasDir(targetDir) {
-						os.MkdirAll(targetDir, os.ModePerm)
-					}
+					// Inside the file processing loop where directories are created:
+                    // Ensure target directory exists
+                    if !helper.HasDir(targetDir) {
+                        if !isDryRun {
+                            os.MkdirAll(targetDir, os.ModePerm)
+                        }
+                    }
 					
 					newpath := filepath.Join(targetDir, newname)
 					newfile := model.File{
@@ -155,12 +154,22 @@ var renameCmd = &cobra.Command{
 					}
 					
 					// Copy the file with new name to output folder
-					helper.CopyFile(file, newfile)
+                    if !isDryRun {
+                        helper.CopyFile(file, newfile)
+                    }
         
 					if needsRenaming {
-						fmt.Println(file.FullPath, "→", newpath)
+						if isDryRun {
+                            fmt.Println("[DRY RUN] Would rename:", file.FullPath, "→", newpath)
+                        } else {
+                            fmt.Println(file.FullPath, "→", newpath)
+                        }
 					} else {
-						fmt.Println(file.FullPath, "→ (copied to)", newpath)
+						if isDryRun {
+                            fmt.Println("[DRY RUN] Would copy:", file.FullPath, "→", newpath)
+                        } else {
+                            fmt.Println(file.FullPath, "→ (copied to)", newpath)
+                        }
 					}
 				} else {
 					// Only rename if needed (name is not already slug-formatted)
@@ -175,16 +184,94 @@ var renameCmd = &cobra.Command{
 							Ext:      file.Ext,
 						}
 						
-						helper.MoveFile(file, newfile)
-						fmt.Println(file.FullPath, "→", newpath)
+						if !isDryRun {
+                            helper.MoveFile(file, newfile)
+                            fmt.Println(file.FullPath, "→", newpath)
+                        } else {
+                            fmt.Println("[DRY RUN] Would rename:", file.FullPath, "→", newpath)
+                        }
 					}
 				}
 			}
+			// If recursive and no output directory, rename directories
+            if isRecursive && outputDir == "" {
+                fmt.Println("______________________")
+                if isDryRun {
+                    fmt.Println("[DRY RUN] Preview of directory renaming (no changes will be made)...")
+                } else {
+                    fmt.Println("Renaming directories...")
+                }
+                fmt.Println(" ")
+                
+                // Get unique directories
+                dirs := helper.GetDirectories(files, sourceDir)
+                
+                // Sort directories by depth (deepest first)
+                helper.SortDirsByDepth(dirs)
+                
+                // Rename directories
+                for _, dir := range dirs {
+                    dirName := filepath.Base(dir)
+                    parentDir := filepath.Dir(dir)
+                    
+                    // Create slug for directory name
+                    slugDirName := slug.Make(dirName)
+                    
+                    if slugDirName != dirName {
+                        // we make a new directory with the slug name
+						newDir := filepath.Join(filepath.Dir(parentDir), slugDirName)
+						if isDryRun {
+							fmt.Println("[DRY RUN] Would rename directory:", dir, "→", newDir)
+						} else {
+							os.MkdirAll(newDir, os.ModePerm)
+							fmt.Println(dir, "→", newDir)
+							// then we move all files from the old directory to the new one
+							if err := helper.MoveFilesByPath(dir, newDir); err != nil {
+								fmt.Println("Error moving files:", err)
+							}
+							// and finally we remove the old directory
+							if err := os.RemoveAll(dir); err != nil {
+								fmt.Println("Error removing old directory:", err)
+							} else {
+								fmt.Println("Removed old directory:", dir)
+							}
+						}
+                    }
+                }
+            }
+
 		}
 	},
 }
 
-// Execute runs the root command
+// Add this special handling to Execute function
 func Execute() error {
-	return RootCmd.Execute()
+    // Special case handling for "rename" directory
+    if len(os.Args) >= 2 && os.Args[1] == "rename" {
+        // Check if "rename" is a directory
+        info, err := os.Stat("rename")
+        if err == nil && info.IsDir() {
+            // It's a directory, so treat it as a path argument rather than a subcommand
+            
+            // Capture any flags that were provided after "rename"
+            var flags []string
+            for i := 2; i < len(os.Args); i++ {
+                if strings.HasPrefix(os.Args[i], "-") {
+                    flags = append(flags, os.Args[i])
+                }
+            }
+            
+            // Parse flags first
+            if len(flags) > 0 {
+                RootCmd.ParseFlags(os.Args[2:])
+            }
+            
+            // Pass the directory as argument
+            renameArgs := []string{"rename"}
+            renameCmd.Run(RootCmd, renameArgs)
+            return nil
+        }
+    }
+    
+    return RootCmd.Execute()
 }
