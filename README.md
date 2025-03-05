@@ -69,6 +69,7 @@ $ slugfiles
 Rename files in a directory to user friendly slugs.
 
 Usage:
+  slugfiles [folder] [flags]
   slugfiles [command]
 
 Available Commands:
@@ -77,13 +78,26 @@ Available Commands:
 
 Flags:
   -c, --case-sensitive   Case sensitive renaming
+  -d, --dry-run          Simulate renaming without making changes
   -h, --help             help for slugfiles
   -o, --output string    Output directory
   -r, --recursive        Process directories recursively
   -v, --version          version for slugfiles
-
-Use "slugfiles [command] --help" for more information about a command.
 ```
+
+You can use Slugfiles in two equivalent ways:
+
+1. By providing a folder path directly:
+   ```bash
+   slugfiles /path/to/directory [flags]
+   ```
+
+2. By using the explicit `rename` command:
+   ```bash
+   slugfiles rename /path/to/directory [flags]
+   ```
+
+Both methods perform exactly the same operation. Choose whichever syntax you prefer.
 
 ### Recursive Mode
 
@@ -97,26 +111,53 @@ By default, Slugfiles renames files in the original directory. If you want to sa
 
 By default, Slugfiles converts filenames to lowercase. If you want to preserve the original case of the filenames, use the `--case-sensitive` flag.
 
+### Dry Run Mode
+
+The `--dry-run` flag allows you to preview the changes that would be made without actually renaming any files. This is useful for verifying what changes would occur before committing to them.
+
+```bash
+# Preview file renaming without making changes
+slugfiles rename --dry-run /path/to/directory
+
+# Preview recursive renaming
+slugfiles rename --dry-run --recursive /path/to/directory
+```
+
+When in dry run mode, Slugfiles will display "[DRY RUN]" before each operation that would be performed.
+
+
 ### Some examples:
 
 ```bash
 # Basic usage - rename files in a directory (only top-level files)
+slugfiles /path/to/directory
+# Or equivalently:
 slugfiles rename /path/to/directory
 
 # Rename recursively (includes files in all subdirectories)
+slugfiles --recursive /path/to/directory
+# Or equivalently:
 slugfiles rename --recursive /path/to/directory
 
 # Rename files and save to output directory
-slugfiles rename //path/to/directory --output /path/to/output-directory
+slugfiles /path/to/directory --output /path/to/output-directory
+# Or equivalently:
+slugfiles rename /path/to/directory --output /path/to/output-directory
 
 # Rename files in all subdirectories and save to output directory
-slugfiles rename --recursive /path//path/to/directory --output /path/to/output-directory
-
+slugfiles --recursive /path/to/directory --output /path/to/output-directory
+# Or equivalently:
+slugfiles rename --recursive /path/to/directory --output /path/to/output-directory
 
 # Rename files in a case-sensitive manner
+slugfiles --case-sensitive /path/to/directory
+# Or equivalently:
 slugfiles rename --case-sensitive /path/to/directory
+
 # Rename files in a case-sensitive manner and save to output directory
-slugfiles rename --case-sensitive /path//path/to/directory --output /path/to/output-directory
+slugfiles --case-sensitive /path/to/directory --output /path/to/output-directory
+# Or equivalently:
+slugfiles rename --case-sensitive /path/to/directory --output /path/to/output-directory
 ```
 
 ## License

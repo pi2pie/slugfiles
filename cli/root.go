@@ -18,7 +18,7 @@ var isCaseSensitive bool
 var isDryRun bool
 
 // Version can be set via ldflags during build
-var Version = "0.0.4-rc.5"
+var Version = "0.0.5"
 
 // RootCmd is the root command for the CLI
 var RootCmd = &cobra.Command{
@@ -48,7 +48,7 @@ func init() {
 }
 
 var renameCmd = &cobra.Command{
-	Use:   "rename [folder]",
+	Use:   "rename [folder] [flags]",
 	Short: "Rename files in a directory to user friendly slugs.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
