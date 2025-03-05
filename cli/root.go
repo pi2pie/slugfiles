@@ -18,13 +18,24 @@ var isCaseSensitive bool
 var isDryRun bool
 
 // Version can be set via ldflags during build
-var Version = "0.0.4-rc.4"
+var Version = "0.0.4-rc.5"
 
 // RootCmd is the root command for the CLI
 var RootCmd = &cobra.Command{
-	Use:     "slugfiles",
-	Short:   "Rename files in a directory to user friendly slugs.",
-	Version: Version,
+    Use:     "slugfiles [folder]",
+    Short:   "Rename files in a directory to user friendly slugs.",
+    Version: Version,
+    Args:    cobra.MaximumNArgs(1),
+    Run: func(cmd *cobra.Command, args []string) {
+        if len(args) == 1 {
+            // If a file path is provided, execute the rename command's logic
+            renameArgs := []string{args[0]}
+            renameCmd.Run(cmd, renameArgs)
+        } else {
+            // No argument: display help
+            cmd.Help()
+        }
+    },
 }
 
 func init() {
@@ -36,28 +47,27 @@ func init() {
 	RootCmd.AddCommand(renameCmd)
 }
 
-// Rewritten outputFolder function to properly handle directory structures
-func outputFolder() string {
-	output, _ := RootCmd.PersistentFlags().GetString("output")
-	if output == "" {
-		return ""
-	}
-	
-	// Normalize and ensure output has trailing separator
-	output = filepath.Clean(output)
-	if !strings.HasSuffix(output, string(os.PathSeparator)) {
-		output += string(os.PathSeparator)
-	}
-	
-	return output
-}
-
 var renameCmd = &cobra.Command{
 	Use:   "rename [folder]",
 	Short: "Rename files in a directory to user friendly slugs.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println("Rename command called")
+
+		// dealing with the output folder
+		outputFolder := func() string {
+			outputFlag, _ := cmd.Flags().GetString("output")
+			if outputFlag == "" {
+				return ""
+			}
+			// Normalize and ensure output has trailing separator
+			output := filepath.Clean(outputFlag)
+			if !strings.HasSuffix(output, string(os.PathSeparator)) {
+				output += string(os.PathSeparator)
+			}
+			
+			return output
+		}
 
 		// Check case sensitivity flag
 		if isCaseSensitive {
@@ -234,7 +244,19 @@ var renameCmd = &cobra.Command{
 	},
 }
 
-// Execute runs the root command
+// Add this special handling to Execute function
 func Execute() error {
-	return RootCmd.Execute()
+    // Special case handling for "rename" directory
+    if len(os.Args) == 2 && os.Args[1] == "rename" {
+        // Check if "rename" is a directory
+        info, err := os.Stat("rename")
+        if err == nil && info.IsDir() {
+            // It's a directory, so treat it as a path argument rather than a subcommand
+            renameArgs := []string{"rename"}
+            renameCmd.Run(RootCmd, renameArgs)
+            return nil
+        }
+    }
+    
+    return RootCmd.Execute()
 }
