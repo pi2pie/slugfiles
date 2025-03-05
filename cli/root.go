@@ -247,11 +247,26 @@ var renameCmd = &cobra.Command{
 // Add this special handling to Execute function
 func Execute() error {
     // Special case handling for "rename" directory
-    if len(os.Args) == 2 && os.Args[1] == "rename" {
+    if len(os.Args) >= 2 && os.Args[1] == "rename" {
         // Check if "rename" is a directory
         info, err := os.Stat("rename")
         if err == nil && info.IsDir() {
             // It's a directory, so treat it as a path argument rather than a subcommand
+            
+            // Capture any flags that were provided after "rename"
+            var flags []string
+            for i := 2; i < len(os.Args); i++ {
+                if strings.HasPrefix(os.Args[i], "-") {
+                    flags = append(flags, os.Args[i])
+                }
+            }
+            
+            // Parse flags first
+            if len(flags) > 0 {
+                RootCmd.ParseFlags(os.Args[2:])
+            }
+            
+            // Pass the directory as argument
             renameArgs := []string{"rename"}
             renameCmd.Run(RootCmd, renameArgs)
             return nil
